@@ -144,7 +144,9 @@ fn main() {
                 c = Color::add(&c, &ray_color(&scene, ray));
             }
 
-            c = Color::scale(&c, 1.0 / info.aa_sampling as f32);
+            if info.aa_sampling > 0 {
+                c = Color::scale(&c, 1.0 / info.aa_sampling as f32);
+            }
             c.clamp();
 
             data.push(c);

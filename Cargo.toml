@@ -7,5 +7,4 @@ edition = "2021"
 
 [dependencies]
 png = "0.17.5"
-gltf = {version = "1.0", features = ["KHR_lights_punctual"]}
 rand = "0.8.5"
