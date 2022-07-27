@@ -49,10 +49,16 @@ impl Renderable for Sphere {
         }
 
         let vec = ray.at(t);
-        let n = self.normal(&vec);
+        let mut n = self.normal(&vec);
+        let is_front_face = if Vector3::dot(&r_d, &n) > 0.0 {
+            n = Vector3::scale(&n, -1.0);
+            false
+        } else {
+            true
+        };
 
         return Some(
-            HitRecord::new(vec, n, t, true)
+            HitRecord::new(vec, n, t, is_front_face)
         );
     }
 

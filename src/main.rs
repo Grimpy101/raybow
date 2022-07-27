@@ -1,6 +1,6 @@
 use std::{env::args, time::Instant};
 
-use structures::renderable::Renderable;
+use structures::{renderable::Renderable, scene::Scene, node::Node};
 use utils::GeneralInfo;
 
 use crate::{color::Color, math::vector3::Vector3, ray::Ray, structures::sphere::Sphere};
@@ -30,11 +30,11 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
     });
 }
 
-fn ray_color(renderable: &dyn Renderable, ray: Ray) -> Color {
-    let trace_res = renderable.trace(&ray, 1.0, 100.0);
+fn ray_color(scene: &Scene, ray: Ray) -> Color {
+    let trace_res = scene.trace(&ray, 0.1, 100.0);
     if trace_res.is_some() {
         let hit = trace_res.unwrap();
-        return renderable.get_color(&hit);
+        return scene.get_color(&hit);
     }
 
     let d = ray.get_direction().normalize();
@@ -47,6 +47,27 @@ fn ray_color(renderable: &dyn Renderable, ray: Ray) -> Color {
     let c2_interp = Color::scale(&c2, t);
 
     return Color::add(&c1_interp, &c2_interp);
+}
+
+fn init_scene() -> Scene {
+    let mut scene = Scene::new();
+    
+    let mut node1 = Node::new();
+    let sphere1 = Sphere::new(
+        Vector3::new(0.0, 0.0, -1.0), 0.5
+    );
+    let mut node2 = Node::new();
+    let sphere2 = Sphere::new(
+        Vector3::new(0.0, -100.5, -1.0), 100.0
+    );
+
+    node1.set_renderable(Box::new(sphere1));
+    node2.set_renderable(Box::new(sphere2));
+
+    scene.add_child(node1);
+    scene.add_child(node2);
+
+    return scene;
 }
 
 fn main() {
@@ -72,15 +93,14 @@ fn main() {
         1.0,
         Vector3::new(0.0, 0.0, 0.0));
 
-    let sphere = Sphere::new(
-        Vector3::new(0.0, 0.0, -1.0), 0.5);
+    let scene = init_scene();
 
     for h in 0..height {
         for w in 0..width {
             let ray_direction = camera.get_ray_direction(w, h, width, height);
             let ray = Ray::new(camera.get_origin().copy(), ray_direction);
 
-            let c = ray_color(&sphere, ray);
+            let c = ray_color(&scene, ray);
 
             data.push(c);
         }
