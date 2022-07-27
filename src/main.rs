@@ -16,9 +16,10 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
     let arguments: Vec<String> = args().collect();
 
     let mut output_filename = "out".to_string();
-    let mut output_width = 200;
-    let mut output_height = 100;
+    let mut output_width = 400;
+    let mut output_height = 200;
     let mut aa_sampling = 50;
+    let mut ray_recursion_depth = 50;
 
     for i in 0..arguments.len() {
         if arguments[i] == "-o" {
@@ -60,21 +61,45 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
                 }
             }
         }
+
+        else if arguments[i] == "-r" {
+            if i + 1 >= arguments.len() {
+                return Err("Input error: Recursion depth promised, but not specified.".to_string());
+            } else {
+                ray_recursion_depth = match u64::from_str(arguments[i+1].as_str()) {
+                    Ok(r) => r,
+                    Err(_) => {
+                        return Err("Input error: Recursion depth invalid.".to_string());
+                    }
+                }
+            }
+        }
     }
 
     return Ok(GeneralInfo {
         out_filename: output_filename,
         out_width: output_width,
         out_height: output_height,
-        aa_sampling: aa_sampling
+        aa_sampling: aa_sampling,
+        ray_recursion: ray_recursion_depth
     });
 }
 
-fn ray_color(scene: &Scene, ray: Ray) -> Color {
-    let trace_res = scene.trace(&ray, 0.1, 100.0);
+fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
+    if depth <= 0 {
+        return Color::new(0.0, 0.0, 0.0);
+    }
+
+    let trace_res = scene.trace(&ray, 0.001, 10000.0);
     if trace_res.is_some() {
         let hit = trace_res.unwrap();
-        return scene.get_color(&hit);
+        let rand_vector = Vector3::random_in_unit_sphere();
+        let target = Vector3::sum(&hit.p(), &Vector3::sum(&hit.n(), &rand_vector));
+        let new_ray = Ray::new(
+            hit.p().copy(), Vector3::diff(&target, &hit.p())
+        );
+        let color = ray_color(scene, new_ray, depth - 1);
+        return Color::scale(&color, 0.5);
     }
 
     let d = ray.get_direction().normalize();
@@ -136,12 +161,19 @@ fn main() {
 
     let scene = init_scene();
 
+    let progress_chunk = (height as f32 / 100.0) as u64 * 10;
+    let mut progress_percentage = 0;
+
     for h in 0..height {
+        if h % progress_chunk == 0 {
+            println!("Completed {} %", progress_percentage);
+            progress_percentage += 10;
+        }
         for w in 0..width {
             let mut c = Color::new(0.0, 0.0, 0.0);
             for _ in 0..info.aa_sampling {
                 let ray = camera.get_ray(w, h, width, height);
-                c = Color::add(&c, &ray_color(&scene, ray));
+                c = Color::add(&c, &ray_color(&scene, ray, info.ray_recursion));
             }
 
             if info.aa_sampling > 0 {

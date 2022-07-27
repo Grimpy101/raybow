@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use rand::{self, Rng};
 
 pub struct Vector3 {
     pub x: f32,
@@ -96,6 +97,20 @@ impl Vector3 {
             x: self.x,
             y: self.y,
             z: self.z
+        }
+    }
+
+    pub fn random_in_unit_sphere() -> Self {
+        let a1: f32 = rand::prelude::thread_rng().sample(rand_distr::StandardNormal);
+        let a2: f32 = rand::prelude::thread_rng().sample(rand_distr::StandardNormal);
+        let a3: f32 = rand::prelude::thread_rng().sample(rand_distr::StandardNormal);
+
+        let norm = (a1*a1 + a2*a2 + a3*a3).sqrt();
+
+        Vector3 {
+            x: a1 / norm,
+            y: a2 / norm,
+            z: a3 / norm
         }
     }
 }

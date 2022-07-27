@@ -34,9 +34,9 @@ impl Color {
     }
 
     pub fn to_uint8_str(&self) -> String {
-        let r = (self.r * 255.999) as u8;
-        let g = (self.g * 255.999) as u8;
-        let b = (self.b * 255.999) as u8;
+        let r = (self.r.sqrt() * 255.999) as u8;
+        let g = (self.g.sqrt() * 255.999) as u8;
+        let b = (self.b.sqrt() * 255.999) as u8;
         return format!("{} {} {}", r, g, b);
     }
 }
