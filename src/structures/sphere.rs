@@ -52,7 +52,7 @@ impl Renderable for Sphere {
         let n = self.normal(&vec);
 
         return Some(
-            HitRecord::new(vec, n, t)
+            HitRecord::new(vec, n, t, true)
         );
     }
 

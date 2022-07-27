@@ -16,19 +16,14 @@ mod structures;
 fn get_info_from_args() -> Result<GeneralInfo, String> {
     let arguments: Vec<String> = args().collect();
     if arguments.len() <= 1 {
-        return Err("Error: Input file not provided!".to_string());
-    }
-    if arguments.len() <= 2 {
         return Err("Error: Output file not provided!".to_string());
     }
 
-    let input = arguments[1].clone();
-    let output = arguments[2].clone();
+    let output = arguments[1].clone();
     let w = 255;
     let h = 155;
 
     return Ok(GeneralInfo {
-        in_filename: input,
         out_filename: output,
         out_width: w,
         out_height: h
