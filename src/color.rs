@@ -13,9 +13,9 @@ impl Color {
 
     pub fn add(c1: &Color, c2: &Color) -> Self {
         Color {
-            r: c1.r + c2.r,
-            g: c1.g + c2.g,
-            b: c1.b + c2.b
+            r: (c1.r + c2.r),
+            g: (c1.g + c2.g),
+            b: (c1.b + c2.b)
         }
     }
 
@@ -25,6 +25,12 @@ impl Color {
             g: c.g * s,
             b: c.b * s
         }
+    }
+
+    pub fn clamp(&mut self) {
+        self.r = self.r.max(0.0).min(0.999);
+        self.g = self.g.max(0.0).min(0.999);
+        self.b = self.b.max(0.0).min(0.999);
     }
 
     pub fn to_uint8_str(&self) -> String {
