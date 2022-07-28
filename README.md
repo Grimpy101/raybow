@@ -2,7 +2,7 @@
 ![Cargo 1.62.0](https://img.shields.io/badge/Cargo-1.62.0-orange)
 ![rustc 1.62.0](https://img.shields.io/badge/rustc-1.62.0-yellow)
 
-A simple, small personal ray-tracing renderer, based on the *Ray Tracing in One Weekend* by Peter Shirley, written in Rust.
+A simple, small personal ray-tracing renderer, based on the [*Ray Tracing in One Weekend* by Peter Shirley](https://raytracing.github.io/books/RayTracingInOneWeekend.html), written in Rust.
 
 ## About
 
