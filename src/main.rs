@@ -1,6 +1,6 @@
 use std::{env::args, time::Instant, str::FromStr};
 
-use structures::{scene::Scene, node::Node};
+use structures::{scene::Scene, node::Node, materials::{diffuse::Diffuse, metal::Metal}};
 use utils::GeneralInfo;
 
 use crate::{color::Color, math::vector3::Vector3, ray::Ray, structures::{sphere::Sphere, camera::Camera}};
@@ -94,20 +94,13 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
 
     if trace_res.is_some() {
         let hit = trace_res.unwrap();
-        let rand_vector = Vector3::random_in_unit_sphere();
-
-        let p = hit.p().copy();
-        let n = hit.n();
-
-        let target = &p + n + rand_vector;
-        let ray_dir = &target - &p;
-
-        let new_ray = Ray::new(
-            p, ray_dir
-        );
-
-        let color = ray_color(scene, new_ray, depth - 1);
-        return Color::scale(&color, 0.5);
+        
+        let scatter_opt = hit.material().scatter(&ray, &hit);
+        if scatter_opt.is_some() {
+            let scatter = scatter_opt.unwrap();
+            return &scatter.attenuation * &ray_color(scene, scatter.ray, depth - 1);
+        }
+        return Color::new(0.0, 0.0, 0.0);
     }
 
     let d = ray.get_direction().normalize();
@@ -124,21 +117,42 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
 
 fn init_scene() -> Scene {
     let mut scene = Scene::new();
+
+    let material1 = Diffuse::new(Color::new(0.8, 0.8, 0.0));
+    let material2 = Diffuse::new(Color::new(0.7, 0.3, 0.3));
+    let material3 = Metal::new(Color::new(0.8, 0.8, 0.8), 0.5);
+    let material4 = Metal::new(Color::new(0.8, 0.6, 0.2), 1.0);
     
     let mut node1 = Node::new();
     let sphere1 = Sphere::new(
-        Vector3::new(0.0, 0.0, -1.0), 0.5
+        Vector3::new(0.0, 0.0, -1.0), 0.5,
+        Box::new(material2)
     );
     let mut node2 = Node::new();
     let sphere2 = Sphere::new(
-        Vector3::new(0.0, -100.5, -1.0), 100.0
+        Vector3::new(0.0, -100.5, -1.0), 100.0,
+        Box::new(material1)
+    );
+    let mut node3 = Node::new();
+    let sphere3 = Sphere::new(
+        Vector3::new(-1.0, 0.0, -1.0), 0.5,
+        Box::new(material3)
+    );
+    let mut node4 = Node::new();
+    let sphere4 = Sphere::new(
+        Vector3::new(1.0, 0.0, -1.0), 0.5,
+        Box::new(material4)
     );
 
     node1.set_renderable(Box::new(sphere1));
     node2.set_renderable(Box::new(sphere2));
+    node3.set_renderable(Box::new(sphere3));
+    node4.set_renderable(Box::new(sphere4));
 
     scene.add_child(node1);
     scene.add_child(node2);
+    scene.add_child(node3);
+    scene.add_child(node4);
 
     return scene;
 }

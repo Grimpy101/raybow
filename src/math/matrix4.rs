@@ -1,4 +1,4 @@
-use std::fmt::{Display};
+/*use std::fmt::{Display};
 
 use super::{vector4::Vector4, PI_DIV_180};
 
@@ -223,4 +223,4 @@ impl Display for Matrix4 {
         self.matrix[8], self.matrix[9], self.matrix[10], self.matrix[11],
         self.matrix[12], self.matrix[13], self.matrix[14], self.matrix[15])
     }
-}
+}*/

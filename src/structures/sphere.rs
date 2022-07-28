@@ -1,17 +1,19 @@
 use crate::{math::vector3::Vector3, ray::Ray, color::Color};
 
-use super::renderable::{Renderable, HitRecord};
+use super::{renderable::{Renderable, HitRecord}, material::Material};
 
 pub struct Sphere {
     center: Vector3,
-    radius: f32
+    radius: f32,
+    material: Box<dyn Material>
 }
 
 impl Sphere {
-    pub fn new(center: Vector3, radius: f32) -> Sphere {
+    pub fn new(center: Vector3, radius: f32, material: Box<dyn Material>) -> Sphere {
         Sphere {
             center,
-            radius
+            radius,
+            material
         }
     }
 
@@ -60,7 +62,7 @@ impl Renderable for Sphere {
         };
 
         return Some(
-            HitRecord::new(point, v_n, t, is_front_face)
+            HitRecord::new(point, v_n, t, is_front_face, self.material.copy())
         );
     }
 

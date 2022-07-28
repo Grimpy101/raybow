@@ -29,6 +29,14 @@ impl Color {
         }
     }
 
+    pub fn copy(&self) -> Self {
+        Color {
+            r: self.r,
+            g: self.g,
+            b: self.b
+        }
+    }
+
     pub fn clamp(&mut self) {
         self.r = self.r.max(0.0).min(0.999);
         self.g = self.g.max(0.0).min(0.999);
@@ -73,5 +81,17 @@ impl ops::Mul<f32> for Color {
         self.g = rhs * self.g;
         self.b = rhs * self.b;
         self
+    }
+}
+
+impl ops::Mul<&Color> for &Color {
+    type Output = Color;
+
+    fn mul(self, rhs: &Color) -> Self::Output {
+        Color {
+            r: self.r * rhs.r,
+            g: self.g * rhs.g,
+            b: self.b * rhs.b
+        }
     }
 }

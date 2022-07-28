@@ -76,7 +76,7 @@ impl Vector3 {
     }
 
     pub fn reflection(d: &Vector3, n: &Vector3) -> Vector3 {
-        let dn = Vector3::dot(d, n);
+        let dn = d * n;
         let s = Vector3::scale(n, 2.0 * dn);
         
         Vector3::diff(d, &s)
@@ -91,6 +91,11 @@ impl Vector3 {
             y: b.y * s,
             z: b.z * s
         }
+    }
+
+    pub fn near_zero(&self) -> bool {
+        let s = 1e-8;
+        (self.x.abs() < s) && (self.y.abs() < s) && (self.z.abs() < s)
     }
 
     pub fn copy(&self) -> Self {
