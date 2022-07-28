@@ -1,3 +1,5 @@
+use std::ops;
+
 pub struct Color {
     pub r: f32,
     pub g: f32,
@@ -38,5 +40,38 @@ impl Color {
         let g = (self.g.sqrt() * 255.999) as u8;
         let b = (self.b.sqrt() * 255.999) as u8;
         return format!("{} {} {}", r, g, b);
+    }
+}
+
+impl ops::Add<Color> for Color {
+    type Output = Color;
+
+    fn add(mut self, rhs: Color) -> Self::Output {
+        self.r = self.r + rhs.r;
+        self.g = self.g + rhs.g;
+        self.b = self.b + rhs.b;
+        self
+    }
+}
+
+impl ops::Sub<Color> for Color {
+    type Output = Color;
+
+    fn sub(mut self, rhs: Color) -> Self::Output {
+        self.r = self.r + rhs.r;
+        self.g = self.g + rhs.g;
+        self.b = self.b + rhs.b;
+        self
+    }
+}
+
+impl ops::Mul<f32> for Color {
+    type Output = Color;
+
+    fn mul(mut self, rhs: f32) -> Self::Output {
+        self.r = rhs * self.r;
+        self.g = rhs * self.g;
+        self.b = rhs * self.b;
+        self
     }
 }

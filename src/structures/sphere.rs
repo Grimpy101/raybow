@@ -24,14 +24,16 @@ impl Sphere {
 
 impl Renderable for Sphere {
     fn trace(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
-        let r_o = ray.get_origin();
-        let r_d = ray.get_direction();
+        let v_ro = ray.get_origin();
+        let v_rd = ray.get_direction();
+        let v_sc = &self.center;
+        let sr = self.radius;
 
-        let oc = Vector3::diff(r_o, &self.center);
-        let a = Vector3::dot(r_d, r_d);
-        let half_b = Vector3::dot(&oc, r_d);
-        let c = Vector3::dot(&oc, &oc) - self.radius * self.radius;
-        let dis = half_b*half_b - a*c;
+        let v_oc = v_ro - v_sc;
+        let a = v_rd * v_rd;
+        let half_b = &v_oc * v_rd;
+        let c = &v_oc * &v_oc - sr * sr;
+        let dis = half_b * half_b - a * c;
 
         if dis < 0.0 {
             return None;
@@ -48,17 +50,17 @@ impl Renderable for Sphere {
             }
         }
 
-        let vec = ray.at(t);
-        let mut n = self.normal(&vec);
-        let is_front_face = if Vector3::dot(&r_d, &n) > 0.0 {
-            n = Vector3::scale(&n, -1.0);
+        let point = ray.at(t);
+        let mut v_n = self.normal(&point);
+        let is_front_face = if v_rd * &v_n > 0.0 {
+            v_n = v_n * -1.0;
             false
         } else {
             true
         };
 
         return Some(
-            HitRecord::new(vec, n, t, is_front_face)
+            HitRecord::new(point, v_n, t, is_front_face)
         );
     }
 

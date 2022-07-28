@@ -1,4 +1,4 @@
-use crate::{ray::Ray, color::Color};
+use crate::{ray::Ray};
 
 use super::{node::Node, renderable::HitRecord};
 
@@ -52,14 +52,5 @@ impl Scene {
         }
 
         return Some(hit);
-    }
-
-    pub fn get_color(&self, hit: &HitRecord) -> Color {
-        let n = hit.n();
-        return Color {
-            r: n.x * 0.5 + 0.5,
-            g: n.y * 0.5 + 0.5,
-            b: n.z * 0.5 + 0.5
-        }
     }
 }

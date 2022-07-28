@@ -91,13 +91,21 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
     }
 
     let trace_res = scene.trace(&ray, 0.001, 10000.0);
+
     if trace_res.is_some() {
         let hit = trace_res.unwrap();
         let rand_vector = Vector3::random_in_unit_sphere();
-        let target = Vector3::sum(&hit.p(), &Vector3::sum(&hit.n(), &rand_vector));
+
+        let p = hit.p().copy();
+        let n = hit.n();
+
+        let target = &p + n + rand_vector;
+        let ray_dir = &target - &p;
+
         let new_ray = Ray::new(
-            hit.p().copy(), Vector3::diff(&target, &hit.p())
+            p, ray_dir
         );
+
         let color = ray_color(scene, new_ray, depth - 1);
         return Color::scale(&color, 0.5);
     }
@@ -105,13 +113,13 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
     let d = ray.get_direction().normalize();
     let t = 0.5 * (d.y + 1.0);
     
-    let c1 = Color::new(1.0, 1.0, 1.0);
-    let c2 = Color::new(0.5, 0.7, 1.0);
+    let mut c1 = Color::new(1.0, 1.0, 1.0);
+    let mut c2 = Color::new(0.5, 0.7, 1.0);
 
-    let c1_interp = Color::scale(&c1, 1.0 - t);
-    let c2_interp = Color::scale(&c2, t);
+    c1 = c1 * (1.0 - t);
+    c2 = c2 * t;
 
-    return Color::add(&c1_interp, &c2_interp);
+    return Color::add(&c1, &c2);
 }
 
 fn init_scene() -> Scene {
@@ -173,11 +181,12 @@ fn main() {
             let mut c = Color::new(0.0, 0.0, 0.0);
             for _ in 0..info.aa_sampling {
                 let ray = camera.get_ray(w, h, width, height);
-                c = Color::add(&c, &ray_color(&scene, ray, info.ray_recursion));
+                let ray_color = ray_color(&scene, ray, info.ray_recursion);
+                c = c + ray_color;
             }
 
             if info.aa_sampling > 0 {
-                c = Color::scale(&c, 1.0 / info.aa_sampling as f32);
+                c = c * (1.0 / info.aa_sampling as f32);
             }
             c.clamp();
 

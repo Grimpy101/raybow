@@ -1,5 +1,6 @@
 use std::fmt::Display;
 use rand::{self, Rng};
+use std::ops;
 
 pub struct Vector3 {
     pub x: f32,
@@ -118,5 +119,89 @@ impl Vector3 {
 impl Display for Vector3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{} {} {}]", self.x, self.y, self.z)
+    }
+}
+
+impl ops::Add<Vector3> for Vector3 {
+    type Output = Vector3;
+
+    fn add(mut self, rhs: Vector3) -> Self::Output {
+        self.x = self.x + rhs.x;
+        self.y = self.y + rhs.y;
+        self.z = self.z + rhs.z;
+        self
+    }
+}
+
+impl ops::Add<&Vector3> for &Vector3 {
+    type Output = Vector3;
+
+    fn add(self, rhs: &Vector3) -> Self::Output {
+        Vector3 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z
+        }
+    }
+}
+
+impl ops::Mul<Vector3> for Vector3 {
+    type Output = f32;
+
+    fn mul(self, rhs: Vector3) -> Self::Output {
+        self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+    }
+}
+
+impl ops::Mul<&Vector3> for &Vector3 {
+    type Output = f32;
+
+    fn mul(self, rhs: &Vector3) -> Self::Output {
+        self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+    }
+}
+
+impl ops::Mul<f32> for Vector3 {
+    type Output = Vector3;
+
+    fn mul(mut self, rhs: f32) -> Self::Output {
+        self.x = rhs * self.x;
+        self.y = rhs * self.y;
+        self.z = rhs * self.z;
+        self
+    }
+}
+
+impl ops::Sub<Vector3> for Vector3 {
+    type Output = Vector3;
+
+    fn sub(mut self, rhs: Vector3) -> Self::Output {
+        self.x = self.x - rhs.x;
+        self.y = self.y - rhs.y;
+        self.z = self.z - rhs.z;
+        self
+    }
+}
+
+impl ops::Sub<&Vector3> for &Vector3 {
+    type Output = Vector3;
+
+    fn sub(self, rhs: &Vector3) -> Self::Output {
+        Vector3 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z
+        }
+    }
+}
+
+impl ops::Neg for Vector3 {
+    type Output = Vector3;
+
+    fn neg(mut self) -> Self::Output {
+        self.x = -self.x;
+        self.y = -self.y;
+        self.z = -self.z;
+        self
     }
 }
