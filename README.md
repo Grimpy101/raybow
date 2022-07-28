@@ -1,4 +1,7 @@
 # Raybow
+![Cargo 1.62.0](https://img.shields.io/badge/Cargo-1.62.0-orange)
+![rustc 1.62.0](https://img.shields.io/badge/rustc-1.62.0-yellow)
+
 A simple, small personal ray-tracing renderer, based on the *Ray Tracing in One Weekend* by Peter Shirley, written in Rust.
 
 ## About
@@ -18,3 +21,6 @@ Since the program runs in terminal, one can execute the binary with the followin
 * ``-d <width> <height>`` : resolution of the output image, specified as two separate positive integers.
 * ``-a <n>``: number of samples per pixel. This is used in anti-aliasing. *n* random locations are sampled in each pixel, and color is calculated and averaged for the pixel. Smaller values result in less anti-aliasing, but the render is faster.
 * ``-r <n>``: number of ray bounces from surface per ray. More means more accurate render, but is also slower.
+
+## An example render
+![example image](example.png)
