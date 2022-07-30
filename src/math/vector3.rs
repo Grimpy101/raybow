@@ -119,6 +119,15 @@ impl Vector3 {
             z: a3 / norm
         }
     }
+
+    /* Warning: i and n should be normalized!!! */
+    pub fn refraction(i: &Vector3, n: &Vector3, c: f32) -> Vector3 {
+        let cosa =  (&-i*n).min(1.0);
+        let v_pe = (i + &(n*cosa)) * c;
+        let v_pa = n * -(1.0 - &v_pe*&v_pe).abs().sqrt();
+        let v = v_pe + v_pa;
+        return v;
+    }
 }
 
 impl Display for Vector3 {
@@ -177,6 +186,18 @@ impl ops::Mul<f32> for Vector3 {
     }
 }
 
+impl ops::Mul<f32> for &Vector3 {
+    type Output = Vector3;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Vector3 {
+            x: self.x * rhs,
+            y: self.y * rhs,
+            z: self.z * rhs
+        }
+    }
+}
+
 impl ops::Sub<Vector3> for Vector3 {
     type Output = Vector3;
 
@@ -208,5 +229,17 @@ impl ops::Neg for Vector3 {
         self.y = -self.y;
         self.z = -self.z;
         self
+    }
+}
+
+impl ops::Neg for &Vector3 {
+    type Output = Vector3;
+
+    fn neg(self) -> Self::Output {
+        Vector3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z
+        }
     }
 }

@@ -19,7 +19,7 @@ impl Sphere {
 
     pub fn normal(&self, p: &Vector3) -> Vector3 {
         let diff = Vector3::diff(p, &self.center);
-        let n = diff.normalize();
+        let n = diff * (1.0 / self.radius);
         return n;
     }
 }
@@ -43,10 +43,10 @@ impl Renderable for Sphere {
 
         let disqrt = dis.sqrt();
         
-        let t = (-half_b - disqrt) / a;
+        let mut t = (-half_b - disqrt) / a;
 
         if t < t_min || t > t_max {
-            let t = (-half_b + disqrt) / a;
+            t = (-half_b + disqrt) / a;
             if t < t_min || t > t_max {
                 return None;
             }
@@ -54,7 +54,7 @@ impl Renderable for Sphere {
 
         let point = ray.at(t);
         let mut v_n = self.normal(&point);
-        let is_front_face = if v_rd * &v_n > 0.0 {
+        let is_front_face = if v_rd * &v_n >= 0.0 {
             v_n = v_n * -1.0;
             false
         } else {

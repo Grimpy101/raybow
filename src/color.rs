@@ -1,4 +1,4 @@
-use std::ops;
+use std::{ops, fmt::Display};
 
 pub struct Color {
     pub r: f32,
@@ -93,5 +93,11 @@ impl ops::Mul<&Color> for &Color {
             g: self.g * rhs.g,
             b: self.b * rhs.b
         }
+    }
+}
+
+impl Display for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{} {} {}]", self.r, self.g, self.b)
     }
 }

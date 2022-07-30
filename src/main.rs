@@ -1,6 +1,6 @@
 use std::{env::args, time::Instant, str::FromStr};
 
-use structures::{scene::Scene, node::Node, materials::{diffuse::Diffuse, metal::Metal}};
+use structures::{scene::Scene, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}};
 use utils::GeneralInfo;
 
 use crate::{color::Color, math::vector3::Vector3, ray::Ray, structures::{sphere::Sphere, camera::Camera}};
@@ -90,7 +90,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
         return Color::new(0.0, 0.0, 0.0);
     }
 
-    let trace_res = scene.trace(&ray, 0.001, 10000.0);
+    let trace_res = scene.trace(&ray, 0.0001, 10000.0);
 
     if trace_res.is_some() {
         let hit = trace_res.unwrap();
@@ -119,9 +119,11 @@ fn init_scene() -> Scene {
     let mut scene = Scene::new();
 
     let material1 = Diffuse::new(Color::new(0.8, 0.8, 0.0));
-    let material2 = Diffuse::new(Color::new(0.7, 0.3, 0.3));
-    let material3 = Metal::new(Color::new(0.8, 0.8, 0.8), 0.5);
-    let material4 = Metal::new(Color::new(0.8, 0.6, 0.2), 1.0);
+    let material2 = Diffuse::new(Color::new(0.1, 0.2, 0.5));
+    //let material3 = Metal::new(Color::new(0.8, 0.8, 0.8), 0.5);
+    let material4 = Metal::new(Color::new(0.8, 0.6, 0.2), 0.0);
+    let material5 = Dielectric::new(1.5);
+    let material6 = Dielectric::new(1.5);
     
     let mut node1 = Node::new();
     let sphere1 = Sphere::new(
@@ -136,23 +138,30 @@ fn init_scene() -> Scene {
     let mut node3 = Node::new();
     let sphere3 = Sphere::new(
         Vector3::new(-1.0, 0.0, -1.0), 0.5,
-        Box::new(material3)
+        Box::new(material5)
     );
     let mut node4 = Node::new();
     let sphere4 = Sphere::new(
         Vector3::new(1.0, 0.0, -1.0), 0.5,
         Box::new(material4)
     );
+    let mut node5 = Node::new();
+    let sphere5 = Sphere::new(
+        Vector3::new(-1.0, 0.0, -1.0), -0.4,
+        Box::new(material6)
+    );
 
     node1.set_renderable(Box::new(sphere1));
     node2.set_renderable(Box::new(sphere2));
     node3.set_renderable(Box::new(sphere3));
     node4.set_renderable(Box::new(sphere4));
+    node5.set_renderable(Box::new(sphere5));
 
     scene.add_child(node1);
     scene.add_child(node2);
     scene.add_child(node3);
     scene.add_child(node4);
+    scene.add_child(node5);
 
     return scene;
 }
