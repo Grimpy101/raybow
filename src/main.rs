@@ -49,14 +49,14 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
             }
         }
 
-        else if arguments[i] == "-a" {
+        else if arguments[i] == "-s" {
             if i + 1 >= arguments.len() {
-                return Err("Input error: AA sampling count promised, but not specified.".to_string());
+                return Err("Input error: Sampling count promised, but not specified.".to_string());
             } else {
                 aa_sampling = match u64::from_str(arguments[i+1].as_str()) {
                     Ok(a) => a,
                     Err(_) => {
-                        return Err("Input error: AA sampling count not valid.".to_string());
+                        return Err("Input error: Sampling count not valid.".to_string());
                     }
                 }
             }
