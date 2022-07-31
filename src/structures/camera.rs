@@ -9,11 +9,15 @@ pub struct Camera {
 
     location: Vector3,
     rotation: Vector3,
-    rotation_matrix: Matrix3
+    rotation_matrix: Matrix3,
+
+    focus_dist: f32,
+    aperture_size: f32
 }
 
 impl Camera {
-    pub fn new(ar: f32, vfov: f32, location: Vector3, rotation: Vector3) -> Self {
+    pub fn new(ar: f32, vfov: f32, location: Vector3, rotation: Vector3,
+        focus_dist: f32, ap_size: f32) -> Self {
         let mut c = Camera {
             aspect_ratio: ar,
             vfov,
@@ -21,7 +25,9 @@ impl Camera {
             rotation,
             rotation_matrix: Matrix3::identity(),
             width: 1.0,
-            height: 1.0
+            height: 1.0,
+            focus_dist,
+            aperture_size: ap_size
         };
         c.update_veiwport_dim();
         c.update_rotation_matrix();
@@ -57,9 +63,18 @@ impl Camera {
         let z = -1.0;
 
         let dir = Vector3::new(x, y, z);
-        let rotated_dir = &self.rotation_matrix * &dir;
+        let rotated_dir = (&self.rotation_matrix * &dir).normalize();
         //println!("{}, {}", dir, rotated_dir);
-        let or = self.location.copy();
-        return Ray::new(or, rotated_dir);
+
+        let focal_point = &self.location + &(&rotated_dir * self.focus_dist);
+        
+        let x: f32 = (rand::random::<f32>() - 0.5) * self.aperture_size + self.location.x;
+        let y: f32 = (rand::random::<f32>() - 0.5) * self.aperture_size + self.location.y;
+        let z: f32 = (rand::random::<f32>() - 0.5) * self.aperture_size + self.location.z;
+        let or = Vector3::new(x, y, z);
+
+        let new_dir = (&focal_point - &or).normalize();
+
+        return Ray::new(or, new_dir);
     }
 }

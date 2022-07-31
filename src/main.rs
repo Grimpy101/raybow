@@ -188,7 +188,8 @@ fn main() {
         aspect_ratio,
         30.0,
         Vector3::new(3.0, 3.0, 1.0),
-        Vector3::new(-40.0, 45.0, 0.0));
+        Vector3::new(-40.0, 45.0, 0.0),
+        22f32.sqrt(), 0.5);
 
     let scene = init_scene();
 
