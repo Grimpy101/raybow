@@ -185,10 +185,10 @@ fn main() {
     let aspect_ratio = (info.out_width as f32) / (info.out_height as f32);
 
     let camera = Camera::new(
-        2.0, 2.0 * aspect_ratio,
-        1.0,
-        Vector3::new(0.0, 0.0, 0.0),
-        Vector3::new(0.0, 0.0, 0.0));
+        aspect_ratio,
+        30.0,
+        Vector3::new(3.0, 3.0, 1.0),
+        Vector3::new(-40.0, 45.0, 0.0));
 
     let scene = init_scene();
 
