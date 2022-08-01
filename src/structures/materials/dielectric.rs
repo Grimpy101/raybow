@@ -40,9 +40,14 @@ impl Material for Dielectric {
             Vector3::refraction(&unit_dir, &hit.n(), refr_ratio)
         };
 
-        let p = hit.p().copy();
+        let p = hit.p();
+        let p_fixed = if hit.front_face() {
+            p.copy() + hit.n() * 0.01
+        } else {
+            p.copy() - hit.n() * 0.01
+        };
         let attenuation = Color::new(1.0, 1.0, 1.0);
-        let scattered = Ray::new(p, refracted);
+        let scattered = Ray::new(p_fixed, refracted);
         Some(ScatterResult {
             ray: scattered,
             attenuation
