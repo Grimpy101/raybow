@@ -42,9 +42,9 @@ impl Material for Dielectric {
 
         let p = hit.p();
         let p_fixed = if hit.front_face() {
-            p.copy() + hit.n() * 0.01
+            p.copy() + hit.n() * 0.0001
         } else {
-            p.copy() - hit.n() * 0.01
+            p.copy() - hit.n() * 0.0001
         };
         let attenuation = Color::new(1.0, 1.0, 1.0);
         let scattered = Ray::new(p_fixed, refracted);

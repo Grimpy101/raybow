@@ -20,9 +20,9 @@ impl Material for Metal {
         let n = hit.n();
         let p = hit.p();
         let p_fixed = if hit.front_face() {
-            p.copy() + n * 0.01
+            p.copy() + n * 0.0001
         } else {
-            p.copy() - n * 0.01
+            p.copy() - n * 0.0001
         };
         
         let reflected = Vector3::reflection(&d, n);
