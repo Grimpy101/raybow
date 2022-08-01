@@ -19,10 +19,15 @@ impl Material for Metal {
         let d = r_in.get_direction().normalize();
         let n = hit.n();
         let p = hit.p();
+        let p_fixed = if hit.front_face() {
+            p.copy() + n * 0.01
+        } else {
+            p.copy() - n * 0.01
+        };
         
         let reflected = Vector3::reflection(&d, n);
         let dir = reflected + rand * self.roughness;
-        let scattered = Ray::new(p.copy(), dir);
+        let scattered = Ray::new(p_fixed, dir);
         let attenuation = self.albedo.copy();
 
         if scattered.get_direction() * n > 0.0 {

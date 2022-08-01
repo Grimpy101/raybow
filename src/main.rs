@@ -165,7 +165,7 @@ fn test_scene() -> Scene {
     }
 
     let ground_material = Metal::new(
-        Color::new(0.5, 0.5, 0.5), 0.8
+        Color::new(0.5, 0.5, 0.5), 1.0
     );
     let ground = Sphere::new(
         Vector3::new(0.0, -1000.0, 0.0), 1000.0,
@@ -280,6 +280,7 @@ fn main() {
         10.0, 0.1);
 
     let scene = test_scene();
+    
 
     /*for h in 0..height {
         if h % progress_chunk == 0 {
@@ -328,6 +329,7 @@ fn main() {
             receivers.push(rcv_clone);
 
             s.spawn(move |_| {
+                println!("Rows {}-{} started", min_height, max_height);
                 let data_part = render(min_width, max_width, min_height, max_height,
                     t_info, t_camera, t_scene);
                 println!("Rows {}-{} finished", min_height, max_height);
