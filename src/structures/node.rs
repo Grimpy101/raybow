@@ -1,7 +1,7 @@
 use super::renderable::Renderable;
 
 pub struct Node {
-    renderable: Option<Box<dyn Renderable>>
+    renderable: Option<Box<dyn Renderable + Send + Sync>>
 }
 
 impl Node {
@@ -11,11 +11,11 @@ impl Node {
         }
     }
 
-    pub fn set_renderable(&mut self, r: Box<dyn Renderable>) {
+    pub fn set_renderable(&mut self, r: Box<dyn Renderable + Send + Sync>) {
         self.renderable = Some(r);
     }
 
-    pub fn renderable(&self) -> &Option<Box<dyn Renderable>> {
+    pub fn renderable(&self) -> &Option<Box<dyn Renderable + Send + Sync>> {
         &self.renderable
     }
 }

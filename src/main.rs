@@ -1,6 +1,7 @@
 use std::{env::args, time::Instant, str::FromStr};
 
-use structures::{scene::Scene, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}};
+use crossbeam::{thread, channel::unbounded};
+use structures::{scene::Scene, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}, material::Material};
 use utils::GeneralInfo;
 
 use crate::{color::Color, math::vector3::Vector3, ray::Ray, structures::{sphere::Sphere, camera::Camera}};
@@ -20,6 +21,7 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
     let mut output_height = 200;
     let mut aa_sampling = 50;
     let mut ray_recursion_depth = 50;
+    let mut threads = 10;
 
     for i in 0..arguments.len() {
         if arguments[i] == "-o" {
@@ -74,6 +76,19 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
                 }
             }
         }
+
+        else if arguments[i] == "-t" {
+            if i + 1 >= arguments.len() {
+                return Err("Input error: Threads number promised, but not specified.".to_string());
+            } else {
+                threads = match u64::from_str(arguments[i+1].as_str()) {
+                    Ok(r) => r,
+                    Err(_) => {
+                        return Err("Input error: Threads number invalid.".to_string());
+                    }
+                }
+            }
+        }
     }
 
     return Ok(GeneralInfo {
@@ -81,7 +96,8 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
         out_width: output_width,
         out_height: output_height,
         aa_sampling: aa_sampling,
-        ray_recursion: ray_recursion_depth
+        ray_recursion: ray_recursion_depth,
+        threads: threads
     });
 }
 
@@ -115,7 +131,54 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
     return Color::add(&c1, &c2);
 }
 
-fn init_scene() -> Scene {
+fn test_scene() -> Scene {
+    let mut scene = Scene::new();
+
+    for i in -11..11 {
+        for j in -11..11 {
+            let x = i as f32 + 0.9 * rand::random::<f32>();
+            let y = 0.2;
+            let z = j as f32 + 0.9 * rand::random::<f32>();
+
+            let material_number: f32 = rand::random();
+            let material: Box<dyn Material + Send + Sync> = if material_number < 0.8 {
+                Box::new(Diffuse::new(
+                    Color::new(rand::random(), rand::random(), rand::random())
+                ))
+            } else if material_number < 0.95 {
+                Box::new(Metal::new(
+                    Color::new(rand::random(), rand::random(), rand::random()),
+                    0.3
+                ))
+            } else {
+                Box::new(Dielectric::new(1.5))
+            };
+
+            let sphere = Sphere::new(
+                Vector3::new(x, y, z), 0.25,
+                material
+            );
+            let mut node = Node::new();
+            node.set_renderable(Box::new(sphere));
+            scene.add_child(node);
+        }
+    }
+
+    let ground_material = Metal::new(
+        Color::new(0.5, 0.5, 0.5), 0.8
+    );
+    let ground = Sphere::new(
+        Vector3::new(0.0, -1000.0, 0.0), 1000.0,
+        Box::new(ground_material)
+    );
+    let mut ground_node = Node::new();
+    ground_node.set_renderable(Box::new(ground));
+    scene.add_child(ground_node);
+
+    return scene;
+}
+
+/*fn init_scene() -> Scene {
     let mut scene = Scene::new();
 
     let material1 = Diffuse::new(Color::new(0.8, 0.8, 0.0));
@@ -164,6 +227,28 @@ fn init_scene() -> Scene {
     scene.add_child(node5);
 
     return scene;
+}*/
+
+fn render(w_start: u64, w_end: u64, h_start: u64,
+    h_end: u64, info: &GeneralInfo, camera: &Camera, scene: &Scene) -> Vec<Color> {
+    let mut data: Vec<Color> = Vec::new();
+    for h in h_start..h_end {
+        for w in w_start..w_end {
+            let mut c = Color::new(0.0, 0.0, 0.0);
+            for _ in 0..info.aa_sampling {
+                let ray = camera.get_ray(w, h, info.out_width, info.out_height);
+                let ray_color = ray_color(&scene, ray, info.ray_recursion);
+                c = c + ray_color;
+            }
+
+            if info.aa_sampling > 0 {
+                c = c * (1.0 / info.aa_sampling as f32);
+            }
+            c.clamp();
+            data.push(c);
+        }
+    }
+    return data;
 }
 
 fn main() {
@@ -178,25 +263,25 @@ fn main() {
         }
     };
 
-    let mut data: Vec<Color> = Vec::new();
     let height = info.out_height;
     let width = info.out_width;
+    let mut data: Vec<Color> = Vec::new();
+    for _ in 0..height*width {
+        data.push(Color::new(0.0, 0.0, 0.0));
+    }
 
     let aspect_ratio = (info.out_width as f32) / (info.out_height as f32);
 
     let camera = Camera::new(
         aspect_ratio,
         30.0,
-        Vector3::new(3.0, 3.0, 1.0),
-        Vector3::new(-40.0, 45.0, 0.0),
-        22f32.sqrt(), 0.5);
+        Vector3::new(13.0, 2.0, 3.0),
+        Vector3::new(-10.0, 40.0, 0.0),
+        10.0, 0.1);
 
-    let scene = init_scene();
+    let scene = test_scene();
 
-    let progress_chunk = (height as f32 / 100.0) as u64 * 10;
-    let mut progress_percentage = 0;
-
-    for h in 0..height {
+    /*for h in 0..height {
         if h % progress_chunk == 0 {
             println!("Completed {} %", progress_percentage);
             progress_percentage += 10;
@@ -216,7 +301,87 @@ fn main() {
 
             data.push(c);
         }
-    }
+    }*/
+
+    let (st, rt) = unbounded();
+    let mut receivers = Vec::new();
+
+    thread::scope(|s| {
+        for i in 0..info.threads {
+            let thread_share = height / info.threads;
+            let min_height = i*thread_share;
+            let max_height = if i < (info.threads - 1) {
+                min_height + thread_share
+            } else {
+                height
+            };
+            
+            let min_width = 0;
+            let max_width = width;
+
+            let t_info = &info;
+            let t_camera = &camera;
+            let t_scene = &scene;
+
+            let st_clone = st.clone();
+            let rcv_clone = rt.clone();
+            receivers.push(rcv_clone);
+
+            s.spawn(move |_| {
+                let data_part = render(min_width, max_width, min_height, max_height,
+                    t_info, t_camera, t_scene);
+                println!("Rows {}-{} finished", min_height, max_height);
+                let msg = (min_height, max_height, data_part);
+                st_clone.send(msg).unwrap();
+            });
+        }
+
+        for receiver in receivers {
+            let (h1, _, d) = receiver.recv().unwrap();
+            let start = (h1*width) as usize;
+            for i in 0..d.len() {
+                data[i+start] = d[i].copy();
+            }
+        }
+    }).unwrap();
+
+    /*for i in 0..info.threads {
+        let thread_share = height / info.threads;
+        
+        let min_height = i*thread_share;
+        let max_height = if i < (info.threads - 1) {
+            min_height + thread_share
+        } else {
+            height
+        };
+        println!("{}-{}", min_height, max_height);
+
+        let min_width = 0;
+        let max_width = width;
+
+        let st_clone = st.clone();
+
+        /*let handle = thread::spawn(move || {
+            let data_part = render(min_width, max_width, min_height, max_height,
+                t_info, t_camera, t_scene);
+            println!("Rows {}-{} finished", min_height, max_height);
+            tx_clone.send(data_part).unwrap();
+        });*/
+
+        let handle = thread::scope(|s| {
+            let t_info = &info;
+            let t_camera = &camera;
+            let t_scene = &scene;
+            s.spawn(move |_| {
+                let data_part = render(min_width, max_width, min_height, max_height,
+                    t_info, t_camera, t_scene);
+                println!("Rows {}-{} finished", min_height, max_height);
+                let msg = (min_height, max_height, data_part);
+                st_clone.send(msg).unwrap();
+            });
+        }).unwrap();
+        handles.push(handle);
+    }*/
 
     export::export_ppm(&info, data);
 
