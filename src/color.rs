@@ -49,6 +49,18 @@ impl Color {
         let b = (self.b.sqrt() * 255.999) as u8;
         return format!("{} {} {}", r, g, b);
     }
+
+    pub fn to_ycbcr(&self) -> Vec<u8> {
+        let mut y  = self.r *  76.245   + self.g * 149.685  +  self.b * 29.07;
+        let mut cb = self.r * -43.02768 - self.g * 84.47232 +  self.b * 127.5    + 128.0;
+        let mut cr = self.r *  127.5    - self.g * 106.76544 - self.b * 20.73456 + 128.0;
+        
+        y  =  y.round().min(0.0).max(255.0);
+        cb = cb.round().min(0.0).max(255.0);
+        cr = cr.round().min(0.0).max(255.0);
+
+        vec![y as u8, cb as u8, cr as u8]
+    }
 }
 
 impl ops::Add<Color> for Color {

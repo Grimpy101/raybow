@@ -1,6 +1,7 @@
-use std::{env::args, time::Instant, str::FromStr};
+use std::{env::args, time::Instant, str::FromStr, fs::create_dir};
 
 use crossbeam::{thread, channel::unbounded};
+use media::{ppm, media_info::PPMInfo};
 use structures::{scene::Scene, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}, material::Material};
 use utils::GeneralInfo;
 
@@ -8,10 +9,10 @@ use crate::{color::Color, math::vector3::Vector3, ray::Ray, structures::{sphere:
 
 mod math;
 mod utils;
-mod export;
 mod color;
 mod ray;
 mod structures;
+mod media;
 
 fn get_info_from_args() -> Result<GeneralInfo, String> {
     let arguments: Vec<String> = args().collect();
@@ -22,6 +23,7 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
     let mut aa_sampling = 50;
     let mut ray_recursion_depth = 50;
     let mut threads = 10;
+    let mut animation = false;
 
     for i in 0..arguments.len() {
         if arguments[i] == "-o" {
@@ -89,6 +91,10 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
                 }
             }
         }
+
+        else if arguments[i] == "-a" {
+            animation = true;
+        }
     }
 
     return Ok(GeneralInfo {
@@ -97,7 +103,8 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
         out_height: output_height,
         aa_sampling: aa_sampling,
         ray_recursion: ray_recursion_depth,
-        threads: threads
+        threads: threads,
+        animation: animation
     });
 }
 
@@ -251,58 +258,13 @@ fn render(w_start: u64, w_end: u64, h_start: u64,
     return data;
 }
 
-fn main() {
-    println!("Starting Raybow...");
-    let start_time = Instant::now();
-
-    let info = match get_info_from_args() {
-        Ok(f) => f,
-        Err(e) => {
-            eprintln!("{}", e);
-            return;
-        }
-    };
-
+fn render_still(info: &GeneralInfo, camera: &Camera, scene: &Scene, _frame: u64) -> Result<(), String> {
     let height = info.out_height;
     let width = info.out_width;
     let mut data: Vec<Color> = Vec::new();
     for _ in 0..height*width {
         data.push(Color::new(0.0, 0.0, 0.0));
     }
-
-    let aspect_ratio = (info.out_width as f32) / (info.out_height as f32);
-
-    let camera = Camera::new(
-        aspect_ratio,
-        30.0,
-        Vector3::new(13.0, 2.0, 3.0),
-        Vector3::new(-10.0, 40.0, 0.0),
-        10.0, 0.1);
-
-    let scene = test_scene();
-    
-
-    /*for h in 0..height {
-        if h % progress_chunk == 0 {
-            println!("Completed {} %", progress_percentage);
-            progress_percentage += 10;
-        }
-        for w in 0..width {
-            let mut c = Color::new(0.0, 0.0, 0.0);
-            for _ in 0..info.aa_sampling {
-                let ray = camera.get_ray(w, h, width, height);
-                let ray_color = ray_color(&scene, ray, info.ray_recursion);
-                c = c + ray_color;
-            }
-
-            if info.aa_sampling > 0 {
-                c = c * (1.0 / info.aa_sampling as f32);
-            }
-            c.clamp();
-
-            data.push(c);
-        }
-    }*/
 
     let (st, rt) = unbounded();
     let mut receivers = Vec::new();
@@ -329,10 +291,10 @@ fn main() {
             receivers.push(rcv_clone);
 
             s.spawn(move |_| {
-                println!("Rows {}-{} started", min_height, max_height);
+                //println!("Rows {}-{} started", min_height, max_height);
                 let data_part = render(min_width, max_width, min_height, max_height,
                     t_info, t_camera, t_scene);
-                println!("Rows {}-{} finished", min_height, max_height);
+                //println!("Rows {}-{} finished", min_height, max_height);
                 let msg = (min_height, max_height, data_part);
                 st_clone.send(msg).unwrap();
             });
@@ -347,47 +309,115 @@ fn main() {
         }
     }).unwrap();
 
-    /*for i in 0..info.threads {
-        let thread_share = height / info.threads;
-        
-        let min_height = i*thread_share;
-        let max_height = if i < (info.threads - 1) {
-            min_height + thread_share
-        } else {
-            height
+    let ppm_info = PPMInfo {
+        filename: info.out_filename.clone(),
+        width: info.out_width,
+        height: info.out_height,
+        max_val: 255,
+    };
+
+    match ppm::encode(&ppm_info, data) {
+        Ok(_) => {
+            return Ok(());
+        },
+        Err(e) => {
+            return Err(format!("Error outputing: {}", e))
+        }
+    };
+}
+
+fn render_animation(info: &GeneralInfo, camera: &Camera, scene: &Scene, start_frame: u64, end_frame: u64) -> Result<(), String> {
+    let height = info.out_height;
+    let width = info.out_width;
+    let mut data: Vec<Color> = Vec::new();
+    for _ in 0..height*width {
+        data.push(Color::new(0.0, 0.0, 0.0));
+    }
+
+    match create_dir(info.out_filename.clone()) {
+        Ok(_) => {},
+        Err(e) => {
+            return Err(format!("Error creating directory: {}", e));
+        }
+    };
+
+    for frame in start_frame..(end_frame+1) {
+        println!("Starting rendering frame {}", frame);
+        let temp_info = GeneralInfo {
+            out_filename: format!("{}/{}_{}",info.out_filename, info.out_filename, frame),
+            out_width: info.out_width,
+            out_height: info.out_height,
+            aa_sampling: info.aa_sampling,
+            ray_recursion: info.ray_recursion,
+            threads: info.threads,
+            animation: info.animation
         };
-        println!("{}-{}", min_height, max_height);
 
-        let min_width = 0;
-        let max_width = width;
+        match render_still(&temp_info, camera, scene, frame) {
+            Ok(_) => {},
+            Err(e) => {
+                return Err(format!("Error rendering: {}", e));
+            }
+        };
+        println!("Finished with frame {}", frame);
+    }
 
-        let st_clone = st.clone();
+    return Ok(());
+}
 
-        /*let handle = thread::spawn(move || {
-            let data_part = render(min_width, max_width, min_height, max_height,
-                t_info, t_camera, t_scene);
-            println!("Rows {}-{} finished", min_height, max_height);
-            tx_clone.send(data_part).unwrap();
-        });*/
+fn main() {
+    println!("Starting Raybow...");
+    let info_start_time = Instant::now();
 
-        let handle = thread::scope(|s| {
-            let t_info = &info;
-            let t_camera = &camera;
-            let t_scene = &scene;
-            s.spawn(move |_| {
-                let data_part = render(min_width, max_width, min_height, max_height,
-                    t_info, t_camera, t_scene);
-                println!("Rows {}-{} finished", min_height, max_height);
-                let msg = (min_height, max_height, data_part);
-                st_clone.send(msg).unwrap();
-            });
-        }).unwrap();
-        handles.push(handle);
-    }*/
+    let info = match get_info_from_args() {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{}", e);
+            return;
+        }
+    };
 
-    export::export_ppm(&info, data);
+    let height = info.out_height;
+    let width = info.out_width;
+    let mut data: Vec<Color> = Vec::new();
+    for _ in 0..height*width {
+        data.push(Color::new(0.0, 0.0, 0.0));
+    }
 
-    let duration = start_time.elapsed();
-    println!("Finished in {:?}s.", duration.as_secs_f32());
+    let aspect_ratio = (info.out_width as f32) / (info.out_height as f32);
+    let start_frame = 1;
+    let end_frame   = 2;
+
+    let camera = Camera::new(
+        aspect_ratio,
+        30.0,
+        Vector3::new(13.0, 2.0, 3.0),
+        Vector3::new(-10.0, 40.0, 0.0),
+        10.0, 0.1);
+
+    let scene = test_scene();
+
+    if info.animation {
+        match render_animation(&info, &camera, &scene, start_frame, end_frame) {
+            Ok(_) => {
+                println!("Rendering finished successfully.");
+            },
+            Err(e) => {
+                println!("Error rendering animation: {}", e);
+            }
+        }
+    } else {
+        match render_still(&info, &camera, &scene, 1) {
+            Ok(_) => {
+                println!("Rendering finished successfully.");
+            },
+            Err(e) => {
+                println!("Error rendering still: {}", e);
+            },
+        }
+    }
+
+    let info_duration = info_start_time.elapsed();
+    println!("Finished in {:?}s.", info_duration.as_secs_f32());
     println!("Exiting...");
 }
