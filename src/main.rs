@@ -4,7 +4,7 @@ use animation::animation::{AnimationChannel, AnimationKey, Interpolation};
 use crossbeam::{thread, channel::unbounded};
 use math::vector2::Vector2;
 use media::{ppm, media_info::PPMInfo};
-use structures::{scene::{Scene}, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}};
+use structures::{scene::{Scene}, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}, material::Material};
 use utils::{GeneralInfo, RenderInfo};
 
 use crate::{color::Color, math::vector3::Vector3, ray::Ray, structures::{sphere::Sphere, camera::Camera}};
@@ -141,7 +141,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64, f: f32) -> Color {
     return Color::add(&c1, &c2);
 }
 
-/*fn test_scene() -> Scene {
+fn test_scene() -> Scene {
     let mut scene = Scene::new();
 
     for i in -11..11 {
@@ -151,11 +151,11 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64, f: f32) -> Color {
             let z = j as f32 + 0.9 * rand::random::<f32>();
 
             let material_number: f32 = rand::random();
-            let material: Box<dyn Material + Send + Sync> = if material_number < 0.8 {
+            let material: Box<dyn Material + Send + Sync> = if material_number < 0.6 {
                 Box::new(Diffuse::new(
                     Color::new(rand::random(), rand::random(), rand::random())
                 ))
-            } else if material_number < 0.95 {
+            } else if material_number < 0.85 {
                 Box::new(Metal::new(
                     Color::new(rand::random(), rand::random(), rand::random()),
                     0.3
@@ -164,18 +164,10 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64, f: f32) -> Color {
                 Box::new(Dielectric::new(1.5))
             };
 
-            let mut sphere = Sphere::new(
+            let sphere = Sphere::new(
                 Vector3::new(x, y, z), 0.25,
                 material
             );
-            let mut animation_rad = AnimationChannel::new();
-            let mut anim_key1 = AnimationKey::new(0.0, 0.0);
-            let mut anim_key2 = AnimationKey::new(5.0, 0.2);
-            anim_key1.change_interpolation(Interpolation::Linear);
-            anim_key2.change_interpolation(Interpolation::Linear);
-            animation_rad.add_key(anim_key1);
-            animation_rad.add_key(anim_key2);
-            sphere.add_animation_channel("radius".to_string(), animation_rad);
 
             let mut node = Node::new();
             node.set_renderable(Box::new(sphere));
@@ -195,7 +187,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64, f: f32) -> Color {
     scene.add_child(ground_node);
 
     return scene;
-}*/
+}
 
 fn init_scene() -> Scene {
     let mut scene = Scene::new();
@@ -423,7 +415,7 @@ fn render_animation(info: &GeneralInfo, scene: &Scene,
 }
 
 fn main() {
-    println!("Starting Raybow...");
+    println!("Running Raybow...");
     let info_start_time = Instant::now();
 
     let info = match get_info_from_args() {
@@ -450,12 +442,12 @@ fn main() {
         .set_vertical_field_of_view(30.0)
         .build();
     
-    camera.set_location(Vector3::new(4.0, 1.0, 4.0));
+    camera.set_location(Vector3::new(4.0, 2.0, 4.0));
     camera.set_rotation(Vector3::new(-10.0, 40.0, 0.0));
     camera.set_focus_distance(5.7);
     camera.set_aperture_size(0.1);
 
-    let mut scene = init_scene();
+    let mut scene = test_scene();
     scene.add_camera(camera);
 
     if info.animation {

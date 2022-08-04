@@ -1,5 +1,6 @@
 use crate::math::{vector2::Vector2, vector3::Vector3};
 
+/** Keyframe interpolation types */
 pub enum Interpolation {
     Constant,
     Linear,
