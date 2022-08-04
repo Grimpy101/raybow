@@ -4,8 +4,8 @@ use animation::animation::{AnimationChannel, AnimationKey, Interpolation};
 use crossbeam::{thread, channel::unbounded};
 use math::vector2::Vector2;
 use media::{ppm, media_info::PPMInfo};
-use structures::{scene::Scene, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}, material::Material};
-use utils::GeneralInfo;
+use structures::{scene::{Scene}, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}};
+use utils::{GeneralInfo, RenderInfo};
 
 use crate::{color::Color, math::vector3::Vector3, ray::Ray, structures::{sphere::Sphere, camera::Camera}};
 
@@ -141,7 +141,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64, f: f32) -> Color {
     return Color::add(&c1, &c2);
 }
 
-fn test_scene() -> Scene {
+/*fn test_scene() -> Scene {
     let mut scene = Scene::new();
 
     for i in -11..11 {
@@ -195,7 +195,7 @@ fn test_scene() -> Scene {
     scene.add_child(ground_node);
 
     return scene;
-}
+}*/
 
 fn init_scene() -> Scene {
     let mut scene = Scene::new();
@@ -205,7 +205,7 @@ fn init_scene() -> Scene {
     //let material3 = Metal::new(Color::new(0.8, 0.8, 0.8), 0.5);
     let material4 = Metal::new(Color::new(0.8, 0.6, 0.2), 0.0);
     let material5 = Dielectric::new(1.5);
-    let material6 = Dielectric::new(1.5);
+    //let material6 = Dielectric::new(1.5);
     
     let mut node1 = Node::new();
     let mut sphere1 = Sphere::new(
@@ -276,15 +276,28 @@ fn init_scene() -> Scene {
     return scene;
 }
 
-fn render(w_start: u64, w_end: u64, h_start: u64,
-    h_end: u64, info: &GeneralInfo, camera: &Camera, scene: &Scene, f: f32) -> Vec<Color> {
+fn render(render_info: RenderInfo) -> Vec<Color> {
+    let hs = render_info.height_start;
+    let he = render_info.height_end;
+    let ws = render_info.width_start;
+    let we = render_info.width_end;
+    let info = render_info.info;
+    let scene = render_info.scene;
+    let camera = match scene.get_camera(0) {
+        Some(c) => c,
+        None => {
+            panic!("Error: No camera in the scene. Exiting...")
+        }
+    };
+    let frame = render_info.frame as f32;
+
     let mut data: Vec<Color> = Vec::new();
-    for h in h_start..h_end {
-        for w in w_start..w_end {
+    for h in hs..he {
+        for w in ws..we {
             let mut c = Color::new(0.0, 0.0, 0.0);
             for _ in 0..info.aa_sampling {
                 let ray = camera.get_ray(w, h, info.out_width, info.out_height);
-                let ray_color = ray_color(&scene, ray, info.ray_recursion, f);
+                let ray_color = ray_color(&scene, ray, info.ray_recursion, frame);
                 c = c + ray_color;
             }
 
@@ -298,7 +311,7 @@ fn render(w_start: u64, w_end: u64, h_start: u64,
     return data;
 }
 
-fn render_still(info: &GeneralInfo, camera: &Camera, scene: &Scene, frame: u64) -> Result<(), String> {
+fn render_still(info: &GeneralInfo, scene: &Scene, frame: u64) -> Result<(), String> {
     let height = info.out_height;
     let width = info.out_width;
     let mut data: Vec<Color> = Vec::new();
@@ -322,18 +335,22 @@ fn render_still(info: &GeneralInfo, camera: &Camera, scene: &Scene, frame: u64) 
             let min_width = 0;
             let max_width = width;
 
-            let t_info = &info;
-            let t_camera = &camera;
-            let t_scene = &scene;
-
             let st_clone = st.clone();
             let rcv_clone = rt.clone();
             receivers.push(rcv_clone);
 
             s.spawn(move |_| {
                 //println!("Rows {}-{} started", min_height, max_height);
-                let data_part = render(min_width, max_width, min_height, max_height,
-                    t_info, t_camera, t_scene, frame as f32);
+                let render_info = RenderInfo {
+                    width_start: min_width,
+                    width_end: max_width,
+                    height_start: min_height,
+                    height_end: max_height,
+                    info,
+                    scene,
+                    frame,
+                };
+                let data_part = render(render_info);
                 //println!("Rows {}-{} finished", min_height, max_height);
                 let msg = (min_height, max_height, data_part);
                 st_clone.send(msg).unwrap();
@@ -366,7 +383,8 @@ fn render_still(info: &GeneralInfo, camera: &Camera, scene: &Scene, frame: u64) 
     };
 }
 
-fn render_animation(info: &GeneralInfo, camera: &Camera, scene: &Scene, start_frame: u64, end_frame: u64) -> Result<(), String> {
+fn render_animation(info: &GeneralInfo, scene: &Scene,
+        start_frame: u64, end_frame: u64) -> Result<(), String> {
     let height = info.out_height;
     let width = info.out_width;
     let mut data: Vec<Color> = Vec::new();
@@ -393,7 +411,7 @@ fn render_animation(info: &GeneralInfo, camera: &Camera, scene: &Scene, start_fr
             animation: info.animation
         };
 
-        match render_still(&temp_info, camera, scene, frame) {
+        match render_still(&temp_info, scene, frame) {
             Ok(_) => {},
             Err(e) => {
                 return Err(format!("Error rendering: {}", e));
@@ -427,17 +445,21 @@ fn main() {
     let start_frame = 1;
     let end_frame   = 23;
 
-    let camera = Camera::new(
-        aspect_ratio,
-        30.0,
-        Vector3::new(4.0, 1.0, 4.0),
-        Vector3::new(-10.0, 40.0, 0.0),
-        5.7, 0.1);
+    let mut camera = Camera::new()
+        .set_aspect_ratio(aspect_ratio)
+        .set_vertical_field_of_view(30.0)
+        .build();
+    
+    camera.set_location(Vector3::new(4.0, 1.0, 4.0));
+    camera.set_rotation(Vector3::new(-10.0, 40.0, 0.0));
+    camera.set_focus_distance(5.7);
+    camera.set_aperture_size(0.1);
 
-    let scene = init_scene();
+    let mut scene = init_scene();
+    scene.add_camera(camera);
 
     if info.animation {
-        match render_animation(&info, &camera, &scene, start_frame, end_frame) {
+        match render_animation(&info, &scene, start_frame, end_frame) {
             Ok(_) => {
                 println!("Rendering finished successfully.");
             },
@@ -446,7 +468,7 @@ fn main() {
             }
         }
     } else {
-        match render_still(&info, &camera, &scene, 1) {
+        match render_still(&info, &scene, 1) {
             Ok(_) => {
                 println!("Rendering finished successfully.");
             },

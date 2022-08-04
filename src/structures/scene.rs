@@ -1,20 +1,30 @@
 use crate::{ray::Ray};
 
-use super::{node::Node, renderable::HitRecord};
+use super::{node::Node, renderable::HitRecord, camera::Camera};
 
 pub struct Scene {
-    children: Vec<Node>
+    children: Vec<Node>,
+    cameras: Vec<Camera>
 }
 
 impl Scene {
     pub fn new() -> Self {
         Scene {
-            children: Vec::new()
+            children: Vec::new(),
+            cameras: Vec::new()
         }
     }
 
     pub fn add_child(&mut self, node: Node) {
         self.children.push(node);
+    }
+
+    pub fn add_camera(&mut self, camera: Camera) {
+        self.cameras.push(camera);
+    }
+
+    pub fn get_camera(&self, index: usize) -> Option<&Camera> {
+        return self.cameras.get(index);
     }
 
     pub fn trace(&self, ray: &Ray, t_min: f32, t_max: f32, f: f32) -> Option<HitRecord> {
