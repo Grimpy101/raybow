@@ -1,11 +1,14 @@
-use crate::{math::vector3::Vector3, ray::Ray, color::Color};
+use std::collections::HashMap;
+
+use crate::{math::vector3::Vector3, ray::Ray, color::Color, animation::animation::AnimationChannel};
 
 use super::{renderable::{Renderable, HitRecord}, material::Material};
 
 pub struct Sphere {
     center: Vector3,
     radius: f32,
-    material: Box<dyn Material + Send + Sync>
+    material: Box<dyn Material + Send + Sync>,
+    animation_channels: HashMap<String, AnimationChannel>
 }
 
 impl Sphere {
@@ -13,8 +16,13 @@ impl Sphere {
         Sphere {
             center,
             radius,
-            material
+            material,
+            animation_channels: HashMap::new()
         }
+    }
+
+    pub fn add_animation_channel(&mut self, name: String, ch: AnimationChannel) {
+        self.animation_channels.insert(name, ch);
     }
 
     pub fn normal(&self, p: &Vector3) -> Vector3 {
@@ -22,14 +30,33 @@ impl Sphere {
         let n = diff * (1.0 / self.radius);
         return n;
     }
+
+    pub fn get_center_by_frame(&self, f: f32) -> Vector3 {
+        let ch_x = self.animation_channels.get("center_x");
+        let ch_y = self.animation_channels.get("center_y");
+        let ch_z = self.animation_channels.get("center_z");
+
+        return AnimationChannel::get_vector_by_frame(ch_x, ch_y, ch_z, &self.center, f);
+    }
+
+    pub fn get_radius_by_frame(&self, f: f32) -> f32 {
+        let ch_r = self.animation_channels.get("radius");
+        if ch_r.is_some() {
+            return match ch_r.unwrap().get_value_at_frame(f) {
+                Some(s) => s,
+                None => self.radius
+            }
+        }
+        return self.radius;
+    }
 }
 
 impl Renderable for Sphere {
-    fn trace(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+    fn trace(&self, ray: &Ray, t_min: f32, t_max: f32, f: f32) -> Option<HitRecord> {
         let v_ro = ray.get_origin();
         let v_rd = ray.get_direction();
-        let v_sc = &self.center;
-        let sr = self.radius;
+        let v_sc = &self.get_center_by_frame(f);
+        let sr = self.get_radius_by_frame(f);
 
         let v_oc = v_ro - v_sc;
         let a = v_rd * v_rd;

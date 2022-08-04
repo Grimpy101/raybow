@@ -17,16 +17,16 @@ impl Scene {
         self.children.push(node);
     }
 
-    pub fn trace(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+    pub fn trace(&self, ray: &Ray, t_min: f32, t_max: f32, f: f32) -> Option<HitRecord> {
         let mut hit_opt = None;
 
         for child in &self.children {
-            hit_opt = Scene::trace_child(child, ray, t_min, t_max, hit_opt);
+            hit_opt = Scene::trace_child(child, ray, t_min, t_max, hit_opt, f);
         }
         return hit_opt;
     }
 
-    pub fn trace_child(node: &Node, ray: &Ray, t_min: f32, t_max: f32, hit_opt: Option<HitRecord>) -> Option<HitRecord> {
+    pub fn trace_child(node: &Node, ray: &Ray, t_min: f32, t_max: f32, hit_opt: Option<HitRecord>, f: f32) -> Option<HitRecord> {
         let rend_opt = node.renderable();
 
         if rend_opt.is_none() {
@@ -34,7 +34,7 @@ impl Scene {
         }
 
         let rend = rend_opt.as_ref().unwrap();
-        let new_hit_opt = rend.trace(ray, t_min, t_max);
+        let new_hit_opt = rend.trace(ray, t_min, t_max, f);
 
         if hit_opt.is_none() {
             return new_hit_opt;

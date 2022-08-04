@@ -1,6 +1,8 @@
-use std::{env::args, time::Instant, str::FromStr, fs::create_dir};
+use std::{env::args, time::Instant, str::FromStr, fs};
 
+use animation::animation::{AnimationChannel, AnimationKey, Interpolation};
 use crossbeam::{thread, channel::unbounded};
+use math::vector2::Vector2;
 use media::{ppm, media_info::PPMInfo};
 use structures::{scene::Scene, node::Node, materials::{diffuse::Diffuse, metal::Metal, dielectric::Dielectric}, material::Material};
 use utils::GeneralInfo;
@@ -13,6 +15,7 @@ mod color;
 mod ray;
 mod structures;
 mod media;
+mod animation;
 
 fn get_info_from_args() -> Result<GeneralInfo, String> {
     let arguments: Vec<String> = args().collect();
@@ -108,12 +111,12 @@ fn get_info_from_args() -> Result<GeneralInfo, String> {
     });
 }
 
-fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
+fn ray_color(scene: &Scene, ray: Ray, depth: u64, f: f32) -> Color {
     if depth <= 0 {
         return Color::new(0.0, 0.0, 0.0);
     }
 
-    let trace_res = scene.trace(&ray, 0.0001, 10000.0);
+    let trace_res = scene.trace(&ray, 0.0001, 10000.0, f);
 
     if trace_res.is_some() {
         let hit = trace_res.unwrap();
@@ -121,7 +124,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64) -> Color {
         let scatter_opt = hit.material().scatter(&ray, &hit);
         if scatter_opt.is_some() {
             let scatter = scatter_opt.unwrap();
-            return &scatter.attenuation * &ray_color(scene, scatter.ray, depth - 1);
+            return &scatter.attenuation * &ray_color(scene, scatter.ray, depth - 1, f);
         }
         return Color::new(0.0, 0.0, 0.0);
     }
@@ -161,10 +164,19 @@ fn test_scene() -> Scene {
                 Box::new(Dielectric::new(1.5))
             };
 
-            let sphere = Sphere::new(
+            let mut sphere = Sphere::new(
                 Vector3::new(x, y, z), 0.25,
                 material
             );
+            let mut animation_rad = AnimationChannel::new();
+            let mut anim_key1 = AnimationKey::new(0.0, 0.0);
+            let mut anim_key2 = AnimationKey::new(5.0, 0.2);
+            anim_key1.change_interpolation(Interpolation::Linear);
+            anim_key2.change_interpolation(Interpolation::Linear);
+            animation_rad.add_key(anim_key1);
+            animation_rad.add_key(anim_key2);
+            sphere.add_animation_channel("radius".to_string(), animation_rad);
+
             let mut node = Node::new();
             node.set_renderable(Box::new(sphere));
             scene.add_child(node);
@@ -185,7 +197,7 @@ fn test_scene() -> Scene {
     return scene;
 }
 
-/*fn init_scene() -> Scene {
+fn init_scene() -> Scene {
     let mut scene = Scene::new();
 
     let material1 = Diffuse::new(Color::new(0.8, 0.8, 0.0));
@@ -196,7 +208,7 @@ fn test_scene() -> Scene {
     let material6 = Dielectric::new(1.5);
     
     let mut node1 = Node::new();
-    let sphere1 = Sphere::new(
+    let mut sphere1 = Sphere::new(
         Vector3::new(0.0, 0.0, -1.0), 0.5,
         Box::new(material2)
     );
@@ -206,7 +218,7 @@ fn test_scene() -> Scene {
         Box::new(material1)
     );
     let mut node3 = Node::new();
-    let sphere3 = Sphere::new(
+    let mut sphere3 = Sphere::new(
         Vector3::new(-1.0, 0.0, -1.0), 0.5,
         Box::new(material5)
     );
@@ -215,36 +227,64 @@ fn test_scene() -> Scene {
         Vector3::new(1.0, 0.0, -1.0), 0.5,
         Box::new(material4)
     );
-    let mut node5 = Node::new();
-    let sphere5 = Sphere::new(
+    /*let mut node5 = Node::new();
+    let mut sphere5 = Sphere::new(
         Vector3::new(-1.0, 0.0, -1.0), -0.4,
         Box::new(material6)
-    );
+    );*/
+
+    let mut animation_rad = AnimationChannel::new();
+    let mut anim_key1 = AnimationKey::new(1.0, 0.0);
+    let mut anim_key2 = AnimationKey::new(5.0, 0.5);
+    anim_key1.change_interpolation(Interpolation::Linear);
+    anim_key2.change_interpolation(Interpolation::Linear);
+    animation_rad.add_key(anim_key1);
+    animation_rad.add_key(anim_key2);
+
+    let mut animation_pos_y = AnimationChannel::new();
+    let mut anim_key1 = AnimationKey::new(1.0, 0.0);
+    let mut anim_key2 = AnimationKey::new(12.0, 1.0);
+    let mut anim_key3 = AnimationKey::new(23.0, 0.0);
+    anim_key1.change_interpolation(Interpolation::Bezier(
+        vec![Vector2::new(0.0, 0.0), Vector2::new(3.0, 0.75)]
+    ));
+    anim_key3.change_interpolation(Interpolation::Bezier(
+        vec![Vector2::new(21.0, 0.75), Vector2::new(23.0, 0.0)]
+    ));
+    anim_key2.change_interpolation(Interpolation::Bezier(
+        vec![Vector2::new(6.0, 1.0), Vector2::new(18.0, 1.0)]
+    ));
+    animation_pos_y.add_key(anim_key1);
+    animation_pos_y.add_key(anim_key2);
+    animation_pos_y.add_key(anim_key3);
+
+    sphere1.add_animation_channel("radius".to_string(), animation_rad);
+    sphere3.add_animation_channel("center_y".to_string(), animation_pos_y);
 
     node1.set_renderable(Box::new(sphere1));
     node2.set_renderable(Box::new(sphere2));
     node3.set_renderable(Box::new(sphere3));
     node4.set_renderable(Box::new(sphere4));
-    node5.set_renderable(Box::new(sphere5));
+    //node5.set_renderable(Box::new(sphere5));
 
     scene.add_child(node1);
     scene.add_child(node2);
     scene.add_child(node3);
     scene.add_child(node4);
-    scene.add_child(node5);
+    //scene.add_child(node5);
 
     return scene;
-}*/
+}
 
 fn render(w_start: u64, w_end: u64, h_start: u64,
-    h_end: u64, info: &GeneralInfo, camera: &Camera, scene: &Scene) -> Vec<Color> {
+    h_end: u64, info: &GeneralInfo, camera: &Camera, scene: &Scene, f: f32) -> Vec<Color> {
     let mut data: Vec<Color> = Vec::new();
     for h in h_start..h_end {
         for w in w_start..w_end {
             let mut c = Color::new(0.0, 0.0, 0.0);
             for _ in 0..info.aa_sampling {
                 let ray = camera.get_ray(w, h, info.out_width, info.out_height);
-                let ray_color = ray_color(&scene, ray, info.ray_recursion);
+                let ray_color = ray_color(&scene, ray, info.ray_recursion, f);
                 c = c + ray_color;
             }
 
@@ -258,7 +298,7 @@ fn render(w_start: u64, w_end: u64, h_start: u64,
     return data;
 }
 
-fn render_still(info: &GeneralInfo, camera: &Camera, scene: &Scene, _frame: u64) -> Result<(), String> {
+fn render_still(info: &GeneralInfo, camera: &Camera, scene: &Scene, frame: u64) -> Result<(), String> {
     let height = info.out_height;
     let width = info.out_width;
     let mut data: Vec<Color> = Vec::new();
@@ -293,7 +333,7 @@ fn render_still(info: &GeneralInfo, camera: &Camera, scene: &Scene, _frame: u64)
             s.spawn(move |_| {
                 //println!("Rows {}-{} started", min_height, max_height);
                 let data_part = render(min_width, max_width, min_height, max_height,
-                    t_info, t_camera, t_scene);
+                    t_info, t_camera, t_scene, frame as f32);
                 //println!("Rows {}-{} finished", min_height, max_height);
                 let msg = (min_height, max_height, data_part);
                 st_clone.send(msg).unwrap();
@@ -334,7 +374,7 @@ fn render_animation(info: &GeneralInfo, camera: &Camera, scene: &Scene, start_fr
         data.push(Color::new(0.0, 0.0, 0.0));
     }
 
-    match create_dir(info.out_filename.clone()) {
+    match fs::create_dir_all(info.out_filename.clone()) {
         Ok(_) => {},
         Err(e) => {
             return Err(format!("Error creating directory: {}", e));
@@ -342,7 +382,7 @@ fn render_animation(info: &GeneralInfo, camera: &Camera, scene: &Scene, start_fr
     };
 
     for frame in start_frame..(end_frame+1) {
-        println!("Starting rendering frame {}", frame);
+        println!("Rendering frame {}...", frame);
         let temp_info = GeneralInfo {
             out_filename: format!("{}/{}_{}",info.out_filename, info.out_filename, frame),
             out_width: info.out_width,
@@ -359,7 +399,6 @@ fn render_animation(info: &GeneralInfo, camera: &Camera, scene: &Scene, start_fr
                 return Err(format!("Error rendering: {}", e));
             }
         };
-        println!("Finished with frame {}", frame);
     }
 
     return Ok(());
@@ -386,16 +425,16 @@ fn main() {
 
     let aspect_ratio = (info.out_width as f32) / (info.out_height as f32);
     let start_frame = 1;
-    let end_frame   = 2;
+    let end_frame   = 23;
 
     let camera = Camera::new(
         aspect_ratio,
         30.0,
-        Vector3::new(13.0, 2.0, 3.0),
+        Vector3::new(4.0, 1.0, 4.0),
         Vector3::new(-10.0, 40.0, 0.0),
-        10.0, 0.1);
+        5.7, 0.1);
 
-    let scene = test_scene();
+    let scene = init_scene();
 
     if info.animation {
         match render_animation(&info, &camera, &scene, start_frame, end_frame) {
