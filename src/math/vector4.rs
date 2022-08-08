@@ -1,4 +1,4 @@
-/*use std::fmt::Display;
+use std::fmt::Display;
 
 use super::vector3::Vector3;
 
@@ -59,4 +59,4 @@ impl Display for Vector4 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{} {} {} {}]", self.x, self.y, self.z, self.w)
     }
-}*/
+}

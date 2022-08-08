@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{math::vector3::Vector3, ray::Ray, color::Color, animation::animation::AnimationChannel};
+use crate::{math::{vector3::Vector3, matrix4::Matrix4, vector4::Vector4}, ray::Ray, color::Color, animation::animation::AnimationChannel};
 
 use super::{renderable::{Renderable, HitRecord}, material::Material};
 
@@ -42,20 +42,19 @@ impl Sphere {
     pub fn get_radius_by_frame(&self, f: f32) -> f32 {
         let ch_r = self.animation_channels.get("radius");
         if ch_r.is_some() {
-            return match ch_r.unwrap().get_value_at_frame(f) {
-                Some(s) => s,
-                None => self.radius
-            }
+            return ch_r.unwrap().get_value_at_frame(f, self.radius);
         }
         return self.radius;
     }
 }
 
 impl Renderable for Sphere {
-    fn trace(&self, ray: &Ray, t_min: f32, t_max: f32, f: f32) -> Option<HitRecord> {
+    fn trace(&self, ray: &Ray, t_min: f32, t_max: f32, f: f32, m: &Matrix4) -> Option<HitRecord> {
         let v_ro = ray.get_origin();
         let v_rd = ray.get_direction();
-        let v_sc = &self.get_center_by_frame(f);
+        let v_sc_4 = Matrix4::mul_vector4(m,
+            &Vector4::from_vector3(&self.get_center_by_frame(f), 1.0));
+        let v_sc = &Vector3::new(v_sc_4.x, v_sc_4.y, v_sc_4.z);
         let sr = self.get_radius_by_frame(f);
 
         let v_oc = v_ro - v_sc;

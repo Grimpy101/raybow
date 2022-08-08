@@ -1,4 +1,4 @@
-use crate::{ray::Ray, math::vector3::Vector3, color::Color};
+use crate::{ray::Ray, math::{vector3::Vector3, matrix4::Matrix4}, color::Color};
 
 use super::material::{Material};
 
@@ -39,6 +39,6 @@ impl HitRecord {
 }
 
 pub trait Renderable {
-    fn trace(&self, ray: &Ray, t_min: f32, t_max: f32, f: f32) -> Option<HitRecord>;
+    fn trace(&self, ray: &Ray, t_min: f32, t_max: f32, f: f32, m: &Matrix4) -> Option<HitRecord>;
     fn get_color(&self, hit_record: &HitRecord) -> Color;
 }

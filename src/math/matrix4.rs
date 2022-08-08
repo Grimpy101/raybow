@@ -1,6 +1,6 @@
-/*use std::fmt::{Display};
+use std::fmt::{Display};
 
-use super::{vector4::Vector4, PI_DIV_180};
+use super::{vector4::Vector4, PI_DIV_180, vector3::Vector3};
 
 pub struct Matrix4 {
     matrix: Vec<f32>
@@ -157,14 +157,14 @@ impl Matrix4 {
         }
     }
 
-    pub fn from_srt(x: f32, y: f32, z: f32,
-                    a: f32, b: f32, c: f32,
-                    u: f32, v: f32, w: f32) -> Self {
+    pub fn from_srt(t: &Vector3,
+                    r: &Vector3,
+                    s: &Vector3) -> Self {
         let mut res = vec![0.0; 16];
         
-        let a = a * PI_DIV_180;
-        let b = b * PI_DIV_180;
-        let c = c * PI_DIV_180;
+        let a = r.x * PI_DIV_180;
+        let b = r.y * PI_DIV_180;
+        let c = r.z * PI_DIV_180;
         
         let sina = a.sin();
         let sinb = b.sin();
@@ -174,20 +174,20 @@ impl Matrix4 {
         let cosb = b.cos();
         let cosc = c.cos();
 
-        res[0] = cosb*cosc * u;
-        res[1] = (sina*sinb*cosc - cosa*sinc) * u;
-        res[2] = (cosa*sinb*cosc + sina*sinc) * u;
-        res[3] = x;
+        res[0] = cosb*cosc * s.x;
+        res[1] = (sina*sinb*cosc - cosa*sinc) * s.x;
+        res[2] = (cosa*sinb*cosc + sina*sinc) * s.x;
+        res[3] = t.x;
         
-        res[4] = cosb*sinc * v;
-        res[5] = (sina*sinb*sinc + cosa*cosc) * v;
-        res[6] = (cosa*sinb*sinc - sina*cosc) * v;
-        res[7] = y;
+        res[4] = cosb*sinc * s.y;
+        res[5] = (sina*sinb*sinc + cosa*cosc) * s.y;
+        res[6] = (cosa*sinb*sinc - sina*cosc) * s.y;
+        res[7] = t.y;
         
-        res[8] = -sinb * w;
-        res[9] = sina*cosb * w;
-        res[10] = cosa*sinb * w;
-        res[11] = z;
+        res[8] = -sinb * s.z;
+        res[9] = sina*cosb * s.z;
+        res[10] = cosa*cosb * s.z;
+        res[11] = t.z;
         
         res[15] = 1.0;
 
@@ -223,4 +223,4 @@ impl Display for Matrix4 {
         self.matrix[8], self.matrix[9], self.matrix[10], self.matrix[11],
         self.matrix[12], self.matrix[13], self.matrix[14], self.matrix[15])
     }
-}*/
+}

@@ -40,9 +40,9 @@ impl AnimationChannel {
         self.keys.push(k);
     }
 
-    pub fn get_value_at_frame(&self, f: f32) -> Option<f32> {
+    pub fn get_value_at_frame(&self, f: f32, default: f32) -> f32 {
         if self.keys.is_empty() {
-            return None;
+            return default;
         }
 
         let mut first = self.keys.first().unwrap();
@@ -53,7 +53,7 @@ impl AnimationChannel {
                 first = &i;
             }
             else if i.point.x == f {
-                return Some(i.point.y);
+                return i.point.y;
             }
             else {
                 last = &i;
@@ -62,23 +62,23 @@ impl AnimationChannel {
         }
 
         if last.point.x == first.point.x {
-            return Some(first.point.y);
+            return first.point.y;
         }
 
         let t = (f - first.point.x) / (last.point.x - first.point.x);
 
         match &first.interpolation {
             Interpolation::Constant => {
-                return Some(first.point.y)
+                return first.point.y
             },
             Interpolation::Linear => {
                 let y = AnimationChannel::linear_interpolate(&first.point, &last.point, t);
-                return Some(y.y);
+                return y.y;
             },
             Interpolation::Bezier(control_points_first) => {
                 let p0 = &first.point;
                 let p1 = &control_points_first[1];
-                // TODO: Fix this later!
+                // TODO: Fix this later! Cases: different keyframes, missing control points...
                 let p2 = match &last.interpolation {
                     Interpolation::Bezier(control_points_last) => &control_points_last[0],
                     _ => &Vector2 {x: 0.0, y: 0.0}
@@ -93,37 +93,27 @@ impl AnimationChannel {
                 let e = AnimationChannel::linear_interpolate(&b, &c, t);
 
                 let f = AnimationChannel::linear_interpolate(&d, &e, t);
-                return Some(f.y);
+                return f.y;
             }
         }
     }
 
     pub fn get_vector_by_frame(c1: Option<&AnimationChannel>, c2: Option<&AnimationChannel>,
             c3: Option<&AnimationChannel>, default: &Vector3, f: f32) -> Vector3 {
-        let mut x = default.x;
-        let mut y = default.y;
-        let mut z = default.z;
+        let x = match c1 {
+            Some(ch) => ch.get_value_at_frame(f, default.x),
+            None => default.x
+        };
+        
+        let y = match c2 {
+            Some(ch) => ch.get_value_at_frame(f, default.y),
+            None => default.y
+        };
 
-        if c1.is_some() {
-            let res = c1.unwrap().get_value_at_frame(f);
-            if res.is_some() {
-                x = res.unwrap();
-            }
-        }
-
-        if c2.is_some() {
-            let res = c2.unwrap().get_value_at_frame(f);
-            if res.is_some() {
-                y = res.unwrap();
-            }
-        }
-
-        if c3.is_some() {
-            let res = c3.unwrap().get_value_at_frame(f);
-            if res.is_some() {
-                z = res.unwrap();
-            }
-        }
+        let z = match c3 {
+            Some(ch) => ch.get_value_at_frame(f, default.z),
+            None => default.z
+        };
 
         return Vector3::new(x, y, z);
     }

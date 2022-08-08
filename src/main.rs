@@ -1,4 +1,4 @@
-use std::{env::args, time::Instant, str::FromStr, fs};
+use std::{env::args, time::Instant, str::FromStr, fs, sync::{Arc, RwLock}};
 
 use animation::animation::{AnimationChannel, AnimationKey, Interpolation};
 use crossbeam::{thread, channel::unbounded};
@@ -141,7 +141,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u64, f: f32) -> Color {
     return Color::add(&c1, &c2);
 }
 
-fn test_scene() -> Scene {
+/*fn test_scene() -> Scene {
     let mut scene = Scene::new();
 
     for i in -11..11 {
@@ -187,9 +187,9 @@ fn test_scene() -> Scene {
     scene.add_child(ground_node);
 
     return scene;
-}
+}*/
 
-fn init_scene() -> Scene {
+/*fn init_scene() -> Scene {
     let mut scene = Scene::new();
 
     let material1 = Diffuse::new(Color::new(0.8, 0.8, 0.0));
@@ -266,6 +266,77 @@ fn init_scene() -> Scene {
     //scene.add_child(node5);
 
     return scene;
+}*/
+
+fn test_scene2() -> Scene {
+    let mut scene = Scene::new();
+
+    let material1 = Diffuse::new(Color::new(0.8, 0.8, 0.0));
+    let material2 = Diffuse::new(Color::new(0.1, 0.2, 0.5));
+    let material3 = Diffuse::new(Color::new(0.8, 0.8, 0.0));
+    let material4 = Diffuse::new(Color::new(0.8, 0.8, 0.0));
+
+    let mut node1 = Node::new();
+    let sphere1 = Sphere::new(
+        Vector3::new(0.0, 0.0, -1.0), 0.5,
+        Box::new(material1)
+    );
+    let mut node2 = Node::new();
+    let sphere2 = Sphere::new(
+        Vector3::new(0.0, -100.5, -1.0), 100.0,
+        Box::new(material2)
+    );
+    let mut node3 = Node::new();
+    let sphere3 = Sphere::new(
+        Vector3::new(-1.0, 0.0, -1.0), 0.5,
+        Box::new(material3)
+    );
+    let mut node4 = Node::new();
+    let sphere4 = Sphere::new(
+        Vector3::new(1.0, 0.0, -1.0), 0.5,
+        Box::new(material4)
+    );
+
+    node1.set_renderable(Box::new(sphere1));
+    node2.set_renderable(Box::new(sphere2));
+    node3.set_renderable(Box::new(sphere3));
+    node4.set_renderable(Box::new(sphere4));
+
+    let mut animation_pos_y = AnimationChannel::new();
+    let mut anim_key1 = AnimationKey::new(1.0, 0.0);
+    let mut anim_key2 = AnimationKey::new(12.0, 1.0);
+    let mut anim_key3 = AnimationKey::new(23.0, 0.0);
+    anim_key1.change_interpolation(Interpolation::Bezier(
+        vec![Vector2::new(0.0, 0.0), Vector2::new(3.0, 0.75)]
+    ));
+    anim_key3.change_interpolation(Interpolation::Bezier(
+        vec![Vector2::new(21.0, 0.75), Vector2::new(23.0, 0.0)]
+    ));
+    anim_key2.change_interpolation(Interpolation::Bezier(
+        vec![Vector2::new(6.0, 1.0), Vector2::new(18.0, 1.0)]
+    ));
+    animation_pos_y.add_key(anim_key1);
+    animation_pos_y.add_key(anim_key2);
+    animation_pos_y.add_key(anim_key3);
+
+    node3.set_animation_channel("translation_y".to_string(), animation_pos_y);
+
+    let node1_arc = Arc::new(RwLock::new(node1));
+    let node2_arc = Arc::new(RwLock::new(node2));
+    let node3_arc = Arc::new(RwLock::new(node3));
+    let node4_arc = Arc::new(RwLock::new(node4));
+
+    /*node3.add_child(node4);
+    scene.add_child(node1);
+    scene.add_child(node2);
+    scene.add_child(node3);*/
+
+    Node::add_child(node3_arc.clone(), node4_arc);
+    scene.add_child(node1_arc);
+    scene.add_child(node2_arc);
+    scene.add_child(node3_arc);
+
+    return scene;
 }
 
 fn render(render_info: RenderInfo) -> Vec<Color> {
@@ -303,13 +374,17 @@ fn render(render_info: RenderInfo) -> Vec<Color> {
     return data;
 }
 
-fn render_still(info: &GeneralInfo, scene: &Scene, frame: u64) -> Result<(), String> {
+fn render_still(info: &GeneralInfo, scene: &mut Scene, frame: u64) -> Result<(), String> {
     let height = info.out_height;
     let width = info.out_width;
     let mut data: Vec<Color> = Vec::new();
     for _ in 0..height*width {
         data.push(Color::new(0.0, 0.0, 0.0));
     }
+
+    scene.update_transforms(frame as f32);
+
+    let scene = &scene;
 
     let (st, rt) = unbounded();
     let mut receivers = Vec::new();
@@ -375,7 +450,7 @@ fn render_still(info: &GeneralInfo, scene: &Scene, frame: u64) -> Result<(), Str
     };
 }
 
-fn render_animation(info: &GeneralInfo, scene: &Scene,
+fn render_animation(info: &GeneralInfo, scene: &mut Scene,
         start_frame: u64, end_frame: u64) -> Result<(), String> {
     let height = info.out_height;
     let width = info.out_width;
@@ -447,11 +522,11 @@ fn main() {
     camera.set_focus_distance(5.7);
     camera.set_aperture_size(0.1);
 
-    let mut scene = test_scene();
+    let mut scene = test_scene2();
     scene.add_camera(camera);
 
     if info.animation {
-        match render_animation(&info, &scene, start_frame, end_frame) {
+        match render_animation(&info, &mut scene, start_frame, end_frame) {
             Ok(_) => {
                 println!("Rendering finished successfully.");
             },
@@ -460,7 +535,7 @@ fn main() {
             }
         }
     } else {
-        match render_still(&info, &scene, 1) {
+        match render_still(&info, &mut scene, 1) {
             Ok(_) => {
                 println!("Rendering finished successfully.");
             },
