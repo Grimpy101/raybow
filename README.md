@@ -12,10 +12,10 @@ This is a simple command-line program - no time for GUIs (yet). It uses the hard
 
 When I get around to it, I'll add some binary releases.
 
-Currently, one can run the application by first installing ``Rust`` and ``Cargo``. Then, one can clone this repository and run ``cargo build`` at the directory that houses ``Cargo.toml``. Built binaries should be in the newly created ``/target`` directory.
+Currently, the application can be run by first installing ``Rust`` and ``Cargo``. Then, clone this repository and run ``cargo build --release`` at the directory that houses ``Cargo.toml``. Built binaries should be in the newly created ``/target/release`` directory. Or you can just clone the repository and run ``cargo run`` and it will build and run the (unoptimized debug) build automatically.
 
 ### Parameters
-Since the program runs in terminal, one can execute the binary with the following parameters.
+Since the program runs in terminal, the binary can be executed with the following parameters.
 
 * ``-o <name>`` : the name of the output image (without the file extension).
 * ``-d <width> <height>`` : resolution of the output image, specified as two separate positive integers.
